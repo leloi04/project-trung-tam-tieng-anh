@@ -29,8 +29,9 @@ export class CreateUserDto {
   @IsNotEmpty({ message: 'gender khong duoc de trong' })
   gender: string;
 
+  @IsMongoId({ message: 'phan tu la objectId' })
   @IsOptional()
-  role?: string;
+  role?: mongoose.Schema.Types.ObjectId;
 
   @IsMongoId({ each: true, message: 'chilren co moi phan tu la objectId' })
   @IsArray({ message: 'chilren co dinh dang la array' })

@@ -8,6 +8,10 @@ import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { RolesModule } from './roles/roles.module';
 import { PermissionsModule } from './permissions/permissions.module';
+import { CoursesModule } from './courses/courses.module';
+import { ClassModule } from './class/class.module';
+import { CurriculumModule } from './curriculum/curriculum.module';
+import { FilesModule } from './files/files.module';
 
 @Module({
   imports: [
@@ -30,6 +34,10 @@ import { PermissionsModule } from './permissions/permissions.module';
     AuthModule,
     RolesModule,
     PermissionsModule,
+    CoursesModule,
+    ClassModule,
+    CurriculumModule,
+    FilesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

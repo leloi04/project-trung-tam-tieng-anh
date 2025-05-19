@@ -12,6 +12,7 @@ import { AuthService } from './auth.service';
 import { LocalAuthGuard } from './local-auth.guard';
 import { Public, ResponseMessage, User } from 'src/decorator/customize';
 import { RegisterUserDto } from 'src/users/dto/create-user.dto';
+import { IUser } from 'src/types/global.constanst';
 
 @Controller('auth')
 export class AuthController {

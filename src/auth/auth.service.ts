@@ -5,6 +5,7 @@ import { UsersService } from 'src/users/users.service';
 import { JwtService } from '@nestjs/jwt';
 import { Response } from 'express';
 import ms from 'ms';
+import { IUser } from 'src/types/global.constanst';
 
 @Injectable()
 export class AuthService {
