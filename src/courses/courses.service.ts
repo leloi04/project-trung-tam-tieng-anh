@@ -1,4 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateCourseDto, RegisterCourseDto } from './dto/create-course.dto';
 import { UpdateCourseDto } from './dto/update-course.dto';
 import { Course, CourseDocument } from './schemas/course.schema';
@@ -7,12 +11,16 @@ import { InjectModel } from '@nestjs/mongoose';
 import { IUser } from 'src/types/global.constanst';
 import aqp from 'api-query-params';
 import { Types } from 'mongoose';
+import { Class, ClassDocument } from 'src/class/schemas/class.schema';
 
 @Injectable()
 export class CoursesService {
   constructor(
     @InjectModel(Course.name)
     private CourseModel: SoftDeleteModel<CourseDocument>,
+
+    @InjectModel(Class.name)
+    private ClassModel: SoftDeleteModel<ClassDocument>,
   ) {}
 
   async create(createCourseDto: CreateCourseDto, user: IUser) {
@@ -39,7 +47,6 @@ export class CoursesService {
     const totalItems = (await this.CourseModel.find(filter)).length;
     const totalPages = Math.ceil(totalItems / defaultLimit);
     const result = await this.CourseModel.find(filter)
-      .select('-password')
       .skip(offset)
       .limit(defaultLimit)
       // @ts-ignore: Unreachable code error
@@ -118,5 +125,83 @@ export class CoursesService {
         $elemMatch: { userId: user._id },
       },
     }).select(['name', '_id']);
+  }
+
+  async assignStudentsAndTeacherToClasses(courseId: string) {
+    // 1. Lấy Course
+    const course = await this.CourseModel.findById(courseId);
+    if (!course) throw new BadRequestException('Course not found');
+
+    // 2. Lấy danh sách học sinh đăng ký (chưa gán lớp)
+    const unassignedStudents = course.registeredBy
+      .filter((r) => r.status === 'PENDING')
+      .map((r) => ({
+        userId: r.userId, // fallback nếu thiếu userId
+        raw: r, // lưu lại toàn bộ object để cập nhật sau
+      }));
+
+    // 3. Lấy danh sách Class có courseId = course._id
+    const classes = await this.ClassModel.find({ courseId });
+
+    // 4. Phân chia học sinh vào lớp
+    let startIndex = 0;
+    const assignments: { userId: string; assignedClassId: Types.ObjectId }[] =
+      [];
+
+    for (const cls of classes) {
+      const availableSlots = cls.totalStudent;
+      const studentsChunk = unassignedStudents.slice(
+        startIndex,
+        startIndex + availableSlots,
+      );
+      const studentIds = studentsChunk.map((s) => s.userId);
+
+      // Cập nhật class.students
+      await this.ClassModel.updateOne(
+        { _id: cls._id },
+        {
+          $addToSet: {
+            students: { $each: studentIds },
+            teachers: course.teacher,
+          },
+        },
+      );
+
+      // Ghi nhớ để cập nhật lại course.registeredBy
+      for (const stu of studentsChunk) {
+        assignments.push({
+          userId: stu.userId.toString(),
+          assignedClassId: cls._id,
+        });
+      }
+
+      startIndex += studentsChunk.length;
+    }
+
+    // 5. Cập nhật lại course.registeredBy: status + assignedClassId
+    course.registeredBy = course.registeredBy.map((entry) => {
+      const assigned = assignments.find(
+        (a) =>
+          entry.userId?.toString() === a.userId ||
+          entry.createdBy?._id?.toString() === a.userId,
+      );
+
+      if (assigned) {
+        return {
+          ...entry,
+          status: 'ASSIGNED',
+          assignedClassId: assigned.assignedClassId,
+        };
+      }
+
+      return entry;
+    });
+
+    await course.save();
+
+    return {
+      message: 'Phân lớp và gán giáo viên thành công',
+      totalAssigned: assignments.length,
+    };
   }
 }

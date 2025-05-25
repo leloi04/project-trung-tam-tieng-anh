@@ -1,34 +1,58 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  Query,
+} from '@nestjs/common';
 import { ClassService } from './class.service';
 import { CreateClassDto } from './dto/create-class.dto';
 import { UpdateClassDto } from './dto/update-class.dto';
+import { ResponseMessage, User } from 'src/decorator/customize';
+import { IUser } from 'src/types/global.constanst';
 
 @Controller('class')
 export class ClassController {
   constructor(private readonly classService: ClassService) {}
 
   @Post()
-  create(@Body() createClassDto: CreateClassDto) {
-    return this.classService.create(createClassDto);
+  @ResponseMessage('Create a new Class')
+  create(@Body() createClassDto: CreateClassDto, @User() user: IUser) {
+    return this.classService.create(createClassDto, user);
   }
 
   @Get()
-  findAll() {
-    return this.classService.findAll();
+  @ResponseMessage('Fetch class with paginate')
+  findAll(
+    @Query('current') currentPage: string,
+    @Query('pageSize') limit: string,
+    @Query() qs: string,
+  ) {
+    return this.classService.findAll(+currentPage, +limit, qs);
   }
 
   @Get(':id')
+  @ResponseMessage('Fetch class by id')
   findOne(@Param('id') id: string) {
-    return this.classService.findOne(+id);
+    return this.classService.findOne(id);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateClassDto: UpdateClassDto) {
-    return this.classService.update(+id, updateClassDto);
+  @ResponseMessage('Update a Class')
+  update(
+    @Param('id') id: string,
+    @Body() updateClassDto: UpdateClassDto,
+    @User() user: IUser,
+  ) {
+    return this.classService.update(id, updateClassDto, user);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.classService.remove(+id);
+  @ResponseMessage('Delete a Course')
+  remove(@Param('id') id: string, @User() user: IUser) {
+    return this.classService.remove(id, user);
   }
 }

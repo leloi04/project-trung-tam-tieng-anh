@@ -70,4 +70,10 @@ export class CoursesController {
   registeredCourses(@User() user: IUser) {
     return this.coursesService.findRegisteredCourses(user);
   }
+
+  @Patch(':id/assign-students')
+  @ResponseMessage('Assign a Courses')
+  assign(@Param('id') courseId: string) {
+    return this.coursesService.assignStudentsAndTeacherToClasses(courseId);
+  }
 }

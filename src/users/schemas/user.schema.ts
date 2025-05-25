@@ -1,8 +1,15 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import mongoose, { HydratedDocument } from 'mongoose';
+import { Class } from 'src/class/schemas/class.schema';
 import { Role } from 'src/roles/Schemas/role.schema';
 
 export type UserDocument = HydratedDocument<User>;
+
+class Absent {
+  absentLength: number;
+
+  classId: mongoose.Schema.Types.ObjectId;
+}
 
 @Schema({ timestamps: true })
 export class User {
@@ -26,6 +33,9 @@ export class User {
 
   @Prop()
   refreshToken: string;
+
+  @Prop({ type: [Absent] })
+  absent: Absent[];
 
   @Prop({ type: mongoose.Schema.Types.ObjectId, ref: User.name })
   children: User[];

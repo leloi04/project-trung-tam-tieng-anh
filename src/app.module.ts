@@ -12,6 +12,8 @@ import { CoursesModule } from './courses/courses.module';
 import { ClassModule } from './class/class.module';
 import { CurriculumModule } from './curriculum/curriculum.module';
 import { FilesModule } from './files/files.module';
+import { AttendanceModule } from './attendance/attendance.module';
+import { ClassScheduleModule } from './class-schedule/class-schedule.module';
 
 @Module({
   imports: [
@@ -38,6 +40,8 @@ import { FilesModule } from './files/files.module';
     ClassModule,
     CurriculumModule,
     FilesModule,
+    AttendanceModule,
+    ClassScheduleModule,
   ],
   controllers: [AppController],
   providers: [AppService],
