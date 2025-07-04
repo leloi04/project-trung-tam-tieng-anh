@@ -38,7 +38,7 @@ export class AuthController {
   async getAccount(@Request() req, @User() user: IUser) {
     // const temp = (await this.rolesService.findOne(user.role._id)) as any;
     // user.permissions = temp?.permissions;
-    return req.user;
+    return { user };
   }
 
   @Post('logout')

@@ -33,6 +33,9 @@ export class Course {
   @Prop()
   maxStudent: number;
 
+  @Prop()
+  thumbnail: string;
+
   @Prop({ type: mongoose.Schema.Types.ObjectId, ref: User.name })
   teacher: mongoose.Schema.Types.ObjectId;
 
@@ -44,6 +47,15 @@ export class Course {
 
   @Prop()
   totalSessions: number;
+
+  @Prop({ type: Object })
+  detail: {
+    information: string;
+    program: string;
+  };
+
+  @Prop()
+  openMode: string;
 
   @Prop()
   startDate: Date;

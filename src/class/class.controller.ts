@@ -55,4 +55,16 @@ export class ClassController {
   remove(@Param('id') id: string, @User() user: IUser) {
     return this.classService.remove(id, user);
   }
+
+  @Post('teacher-in-class')
+  @ResponseMessage('Fetch Class of Teacher')
+  handleFetchClassOfTeacher(@User() user: IUser) {
+    return this.classService.fetchClassOfTeacher(user);
+  }
+
+  @Post('student-in-class')
+  @ResponseMessage('Fetch Class of Student')
+  handleFetchClassOfStudent(@Body('id') id: string) {
+    return this.classService.fetchClassOfStudent(id);
+  }
 }

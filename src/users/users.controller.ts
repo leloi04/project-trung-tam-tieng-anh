@@ -10,7 +10,7 @@ import {
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
+import { UpdateUserDto, UpdateUserPassword } from './dto/update-user.dto';
 import { ResponseMessage, User } from 'src/decorator/customize';
 import { IUser } from 'src/types/global.constanst';
 
@@ -54,5 +54,26 @@ export class UsersController {
   @ResponseMessage('Delete a User')
   remove(@Param('id') id: string, @User() user: IUser) {
     return this.usersService.remove(id, user);
+  }
+
+  @Post('student')
+  @ResponseMessage('Get list User')
+  getStudent() {
+    return this.usersService.getStudent();
+  }
+
+  @Post('children')
+  @ResponseMessage('Get list Children')
+  getChildren(@Body('children') children: string[]) {
+    return this.usersService.getChildren(children);
+  }
+
+  @Post('update-password')
+  @ResponseMessage('Update password')
+  handleUpdatePassword(
+    @Body() updateUserPassword: UpdateUserPassword,
+    @User() user: IUser,
+  ) {
+    return this.usersService.updatePassword(updateUserPassword, user);
   }
 }

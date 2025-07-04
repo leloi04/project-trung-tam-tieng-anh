@@ -1,4 +1,4 @@
-import { IsBoolean, IsMongoId, IsNotEmpty } from 'class-validator';
+import { IsBoolean, IsMongoId, IsNotEmpty, IsOptional } from 'class-validator';
 import mongoose from 'mongoose';
 
 export class CreateClassDto {
@@ -18,24 +18,24 @@ export class CreateClassDto {
   @IsNotEmpty({ message: 'description khong duoc de trong' })
   description: string;
 
-  @IsMongoId({ each: true, message: 'teachers co moi phan tu la objectId' })
+  @IsOptional()
   @IsNotEmpty({ message: 'teachers khong duoc de trong' })
-  teachers: mongoose.Schema.Types.ObjectId[];
+  teachers?: mongoose.Schema.Types.ObjectId[];
 
-  @IsMongoId({ each: true, message: 'students co moi phan tu la objectId' })
+  @IsOptional()
   @IsNotEmpty({ message: 'students khong duoc de trong' })
-  students: mongoose.Schema.Types.ObjectId[];
+  students?: mongoose.Schema.Types.ObjectId[];
 
   @IsNotEmpty({ message: 'studyMethod khong duoc de trong' })
   studyMethod: string;
 
-  @IsMongoId({ message: 'courseId co phan tu la objectId' })
+  @IsOptional()
   @IsNotEmpty({ message: 'courseId khong duoc de trong' })
-  courseId: mongoose.Schema.Types.ObjectId;
+  courseId?: mongoose.Schema.Types.ObjectId;
 
-  @IsMongoId({ message: 'curriculuId co phan tu la objectId' })
   @IsNotEmpty({ message: 'curriculum khong duoc de trong' })
-  curriculumId: mongoose.Schema.Types.ObjectId;
+  @IsOptional()
+  curriculumId?: mongoose.Schema.Types.ObjectId;
 
   @IsNotEmpty({ message: 'totalStudent khong duoc de trong' })
   totalStudent: number;

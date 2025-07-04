@@ -3,6 +3,7 @@ import {
   IsDate,
   IsMongoId,
   IsNotEmpty,
+  IsObject,
   IsOptional,
 } from 'class-validator';
 import mongoose from 'mongoose';
@@ -23,7 +24,6 @@ export class CreateCourseDto {
   @IsNotEmpty({ message: 'maxStudent khong duoc de trong' })
   maxStudent: number;
 
-  @IsMongoId({ message: 'teacher phai la objectId' })
   @IsNotEmpty({ message: 'teacher khong duoc de trong' })
   teacher: mongoose.Schema.Types.ObjectId;
 
@@ -36,9 +36,20 @@ export class CreateCourseDto {
   @IsNotEmpty({ message: 'pricePerSession khong duoc de trong' })
   pricePerSession: number;
 
-  @IsBoolean({ message: 'isOpen phai la boolean' })
-  @IsNotEmpty({ message: 'isOpen khong duoc de trong' })
-  isOpen: boolean;
+  @IsNotEmpty({ message: 'thumbnail khong duoc de trong' })
+  thumbnail: string;
+
+  @IsNotEmpty({ message: 'openMode khong duoc de trong' })
+  openMode: string;
+
+  @IsOptional()
+  isOpen?: boolean;
+
+  @IsNotEmpty({ message: 'detail khong duoc de trong' })
+  detail: {
+    information: string;
+    program: string;
+  };
 }
 
 export class RegisterCourseDto {
@@ -52,4 +63,17 @@ export class RegisterCourseDto {
   @IsOptional()
   @IsMongoId({ message: 'assignedClassId phai la objectId' })
   assignedClassId?: mongoose.Schema.Types.ObjectId;
+}
+
+export class DistributeClass {
+  @IsNotEmpty({ message: 'classId khong duoc de trong' })
+  classId: mongoose.Schema.Types.ObjectId;
+
+  @IsNotEmpty({
+    message: 'options gom courseId hoac studentsId khong duoc de trong',
+  })
+  options: {
+    courseId?: mongoose.Schema.Types.ObjectId;
+    studentIds?: string[];
+  };
 }

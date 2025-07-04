@@ -68,7 +68,7 @@ export class ClassService {
       })
       .populate({
         path: 'courseId',
-        select: { name: 1 },
+        select: { name: 1, totalSessions: 1 },
       })
       .populate({
         path: 'curriculumId',
@@ -100,5 +100,34 @@ export class ClassService {
       },
     );
     return await this.ClassModel.softDelete({ _id: id });
+  }
+
+  async fetchClassOfTeacher(user: IUser) {
+    const cls = await this.ClassModel.find();
+    const listClass = cls.filter((item) =>
+      item.teachers.includes(user._id as any),
+    );
+
+    return listClass.map((item) => {
+      return {
+        name: item.name,
+        _id: item._id,
+        description: item.description,
+        code: item.code,
+      };
+    });
+  }
+
+  async fetchClassOfStudent(id: string) {
+    const cls = await this.ClassModel.find();
+    const listClass = cls.filter((item) => item.students.includes(id as any));
+
+    return listClass.map((item) => {
+      return {
+        name: item.name,
+        _id: item._id,
+        description: item.description,
+      };
+    });
   }
 }

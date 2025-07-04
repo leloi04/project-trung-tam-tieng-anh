@@ -26,7 +26,7 @@ export class infoUserCheckedAbsent {
 
   @IsMongoId({ each: true, message: 'classId co moi phan tu la objectId' })
   @IsNotEmpty({ message: 'classId khong duoc de trong' })
-  classId: mongoose.Schema.Types.ObjectId;
+  classId: mongoose.Schema.Types.ObjectId[];
 }
 
 export class CreateAttendanceDto {

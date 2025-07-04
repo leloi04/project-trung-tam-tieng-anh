@@ -99,57 +99,77 @@ export class AttendanceService {
   }
 
   async absent(infoChecked: infoUserCheckedAbsent) {
-    const { classId, userId } = infoChecked;
+    const { classId: classIds, userId } = infoChecked;
 
-    const classObjectId = new mongoose.Types.ObjectId(classId.toString());
+    const results: {
+      classId: string;
+      absentLength: number;
+      detail: {
+        attendanceId: string;
+        date?: Date;
+        note?: string;
+      }[];
+    }[] = [];
 
-    const fetchAttendanceByClass = await this.AttendanceModel.find({
-      classId: classObjectId,
-    });
+    for (const id of classIds) {
+      const classObjectId = new mongoose.Types.ObjectId(id.toString());
 
-    let result: any[] = [];
-
-    fetchAttendanceByClass.forEach((attendance) => {
-      const absentStudents = attendance.studentAttendInfo.filter((info) => {
-        return (
-          info.status === 'ABSENT' &&
-          info.userId.toString() === userId.toString()
-        );
+      const attendances = await this.AttendanceModel.find({
+        classId: classObjectId,
       });
 
-      result.push(...absentStudents);
-    });
+      const detail: {
+        attendanceId: string;
+        date?: Date;
+        reason?: string;
+      }[] = [];
 
-    await this.UserModel.updateOne(
-      {
-        _id: userId,
-      },
-      {
-        $pull: {
-          absent: {
-            classId: classObjectId,
-          },
-        },
-      },
-    );
+      for (const attendance of attendances) {
+        const studentInfo = attendance.studentAttendInfo.find(
+          (info) =>
+            info.status === 'ABSENT' &&
+            info.userId.toString() === userId.toString(),
+        );
 
-    if (result.length > 0) {
+        if (studentInfo) {
+          detail.push({
+            attendanceId: attendance._id.toString(),
+            date: attendance.date,
+            reason: studentInfo.reason || '',
+          });
+        }
+      }
+
+      const absentCount = detail.length;
+
+      // Cập nhật lại user.absent nếu cần
       await this.UserModel.updateOne(
-        {
-          _id: userId,
-        },
-        {
-          $push: {
-            absent: {
-              classId: classObjectId,
-              absentLength: result.length,
+        { _id: userId },
+        { $pull: { absent: { classId: classObjectId } } },
+      );
+
+      if (absentCount > 0) {
+        await this.UserModel.updateOne(
+          { _id: userId },
+          {
+            $push: {
+              absent: {
+                classId: classObjectId,
+                absentLength: absentCount,
+              },
             },
           },
-        },
-      );
+        );
+      }
+
+      results.push({
+        classId: id.toString(),
+        absentLength: absentCount,
+        detail,
+      });
     }
 
-    return result.length;
+    return results;
   }
 
   async absentUpdateAll(info: { classId: string }) {
@@ -170,5 +190,9 @@ export class AttendanceService {
     }
 
     return 'Done';
+  }
+
+  async fetchAttendanceOfClass(idClass: string) {
+    return await this.AttendanceModel.find({ classId: idClass });
   }
 }

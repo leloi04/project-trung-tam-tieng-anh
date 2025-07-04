@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { CreateUserDto, RegisterUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
+import { UpdateUserDto, UpdateUserPassword } from './dto/update-user.dto';
 import { SoftDeleteModel } from 'soft-delete-plugin-mongoose';
 import { User, UserDocument } from './schemas/user.schema';
 import { InjectModel } from '@nestjs/mongoose';
@@ -10,9 +10,11 @@ import { Role, RoleDocument } from 'src/roles/Schemas/role.schema';
 import {
   IUser,
   PARENT_ROLE,
+  PARENT_ROLE_ID,
   STUDENT_ROLE,
   TEACHER_ROLE,
 } from 'src/types/global.constanst';
+import mongoose from 'mongoose';
 
 @Injectable()
 export class UsersService {
@@ -54,12 +56,31 @@ export class UsersService {
         if (!children) {
           throw new BadRequestException('Phụ huynh cần có children');
         }
+
         break;
+    }
+
+    if (role == (PARENT_ROLE_ID as any)) {
+      const newUser = await this.UserModel.create({
+        ...createUserDto,
+        role: role,
+        password: hashPassword,
+        createdBy: {
+          _id: user?._id,
+          email: user?.email,
+        },
+      });
+
+      return {
+        _id: newUser._id,
+        createdAt: newUser.createdAt,
+      };
     }
 
     const newUser = await this.UserModel.create({
       ...createUserDto,
-      role: role ?? 'USER',
+      role:
+        role ?? new mongoose.Schema.Types.ObjectId('68287347954ffe41c849b2b3'),
       password: hashPassword,
       createdBy: {
         _id: user?._id,
@@ -85,7 +106,7 @@ export class UsersService {
     }
     const user = await this.UserModel.create({
       ...RegisterUserDto,
-      role: RegisterUserDto.role ?? 'USER',
+      role: new mongoose.Types.ObjectId('68287347954ffe41c849b2b3'),
       password: hashPassword,
     });
 
@@ -104,12 +125,13 @@ export class UsersService {
     const totalItems = (await this.UserModel.find(filter)).length;
     const totalPages = Math.ceil(totalItems / defaultLimit);
     const result = await this.UserModel.find(filter)
-      .select('-password')
+      .select(['-password', '-refreshToken', '-absent'])
       .skip(offset)
       .limit(defaultLimit)
       // @ts-ignore: Unreachable code error
       .sort(sort as any)
       .populate(population)
+      .populate({ path: 'role', select: { name: 1 } })
       .exec();
 
     return {
@@ -180,5 +202,48 @@ export class UsersService {
       },
     );
     return this.UserModel.softDelete({ _id: id });
+  }
+
+  async getStudent() {
+    return await this.UserModel.find({
+      role: {
+        $in: [
+          new mongoose.Types.ObjectId('68287380954ffe41c849b2b9'),
+          new mongoose.Types.ObjectId('68287347954ffe41c849b2b3'),
+        ],
+      },
+    }).select(['-password', '-refreshToken']);
+  }
+
+  async getChildren(children: string[]) {
+    return await this.UserModel.find({
+      _id: {
+        $in: children,
+      },
+    }).select(['_id', 'name']);
+  }
+
+  async updatePassword(updateUserPassword: UpdateUserPassword, user: IUser) {
+    const { newPassword, oldPassword, email } = updateUserPassword;
+    const userData = await this.UserModel.findOne({ email: email });
+    if (!compareSync(oldPassword, userData?.password!)) {
+      throw new BadRequestException(
+        'Mật khẩu cũ không đúng vui lòng nhập lại mật khẩu cũ!',
+      );
+    }
+
+    const salt = genSaltSync(10);
+    const hashNewPassword = hashSync(newPassword, salt);
+    return await this.UserModel.updateOne(
+      { email: email },
+      {
+        email,
+        password: hashNewPassword,
+        updatedBy: {
+          _id: user._id,
+          email: user.email,
+        },
+      },
+    );
   }
 }

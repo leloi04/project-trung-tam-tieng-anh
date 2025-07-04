@@ -5,7 +5,7 @@ import { UsersService } from 'src/users/users.service';
 import { JwtService } from '@nestjs/jwt';
 import { Response } from 'express';
 import ms from 'ms';
-import { IUser } from 'src/types/global.constanst';
+import { IUser, PARENT_ROLE_ID } from 'src/types/global.constanst';
 
 @Injectable()
 export class AuthService {
@@ -31,7 +31,7 @@ export class AuthService {
   };
 
   async login(user: any, response: Response) {
-    const { _id, name, email, role } = user;
+    const { _id, name, email, role, phone, children, parent, avatar } = user;
     const payload = {
       sub: 'token login',
       iss: 'from server',
@@ -39,6 +39,10 @@ export class AuthService {
       name,
       email,
       role,
+      phone,
+      children,
+      parent,
+      avatar,
     };
 
     const refresh_token = this.createRefreshToken(payload);
@@ -52,12 +56,25 @@ export class AuthService {
 
     return {
       access_token: this.jwtService.sign(payload),
-      user: {
-        _id,
-        name,
-        email,
-        role,
-      },
+      user:
+        role.id == PARENT_ROLE_ID
+          ? {
+              _id,
+              name,
+              email,
+              role,
+              phone,
+              children,
+              avatar,
+            }
+          : {
+              _id,
+              name,
+              email,
+              role,
+              phone,
+              avatar,
+            },
     };
   }
 
@@ -93,7 +110,7 @@ export class AuthService {
       let user = await this.usersService.findUserByRefreshToken(refreshToken);
 
       if (user) {
-        const { _id, name, email, role } = user;
+        const { _id, name, email, role, phone, children, avatar } = user;
         const payload = {
           sub: 'refresh token',
           iss: 'from server',
@@ -101,6 +118,9 @@ export class AuthService {
           name,
           email,
           role,
+          phone,
+          children,
+          avatar,
         };
 
         const refresh_token = this.createRefreshToken(payload);
@@ -123,13 +143,25 @@ export class AuthService {
         });
         return {
           access_token: this.jwtService.sign(payload),
-          user: {
-            _id,
-            name,
-            email,
-            role,
-            // permissions: temp?.permissions ?? [],
-          },
+          user:
+            role.toString() === PARENT_ROLE_ID
+              ? {
+                  _id,
+                  name,
+                  email,
+                  role,
+                  phone,
+                  children: user.children,
+                  avatar,
+                }
+              : {
+                  _id,
+                  name,
+                  email,
+                  role,
+                  phone,
+                  avatar,
+                },
         };
       } else {
         throw new BadRequestException('Refresh token loi');

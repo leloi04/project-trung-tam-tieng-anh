@@ -26,6 +26,9 @@ export class User {
   gender: string;
 
   @Prop()
+  avatar: string;
+
+  @Prop()
   phone: string;
 
   @Prop({ type: mongoose.Schema.Types.ObjectId, ref: Role.name })
@@ -37,10 +40,10 @@ export class User {
   @Prop({ type: [Absent] })
   absent: Absent[];
 
-  @Prop({ type: mongoose.Schema.Types.ObjectId, ref: User.name })
+  @Prop({ type: [mongoose.Schema.Types.ObjectId], ref: User.name })
   children: User[];
 
-  @Prop({ type: mongoose.Schema.Types.ObjectId, ref: User.name })
+  @Prop({ type: [mongoose.Schema.Types.ObjectId], ref: User.name })
   parent: User[];
 
   @Prop()

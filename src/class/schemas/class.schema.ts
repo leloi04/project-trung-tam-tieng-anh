@@ -28,10 +28,10 @@ export class Class {
   @Prop()
   description: string;
 
-  @Prop({ type: [mongoose.Schema.Types.ObjectId], ref: User.name })
+  @Prop({ type: [mongoose.Schema.Types.ObjectId], ref: User.name, default: [] })
   teachers: mongoose.Schema.Types.ObjectId[];
 
-  @Prop({ type: [mongoose.Schema.Types.ObjectId], ref: User.name })
+  @Prop({ type: [mongoose.Schema.Types.ObjectId], ref: User.name, default: [] })
   students: mongoose.Schema.Types.ObjectId[];
 
   @Prop()
@@ -42,9 +42,6 @@ export class Class {
 
   @Prop({ type: mongoose.Schema.Types.ObjectId, ref: Curriculum.name })
   curriculumId: mongoose.Schema.Types.ObjectId;
-
-  @Prop()
-  checkedStudents: string[];
 
   @Prop()
   totalStudent: number;

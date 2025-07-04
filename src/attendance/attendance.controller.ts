@@ -73,4 +73,10 @@ export class AttendanceController {
   absentAll(@Body() info: any) {
     return this.attendanceService.absentUpdateAll(info);
   }
+
+  @Post('attendance-of-class')
+  @ResponseMessage('Fetch list attendance of class')
+  handleFetchAttendanceOfClass(@Body('idClass') idClass: string) {
+    return this.attendanceService.fetchAttendanceOfClass(idClass);
+  }
 }

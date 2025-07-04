@@ -26,8 +26,8 @@ export class CreateUserDto {
   @IsNotEmpty({ message: 'phone khong duoc de trong' })
   phone: number;
 
-  @IsNotEmpty({ message: 'gender khong duoc de trong' })
-  gender: string;
+  @IsOptional()
+  gender?: string;
 
   @IsMongoId({ message: 'phan tu la objectId' })
   @IsOptional()
@@ -48,6 +48,9 @@ export class CreateUserDto {
 
   @IsOptional()
   specialization?: string;
+
+  @IsOptional()
+  avatar?: string;
 }
 
 export class RegisterUserDto {
@@ -60,9 +63,6 @@ export class RegisterUserDto {
 
   @IsNotEmpty({ message: 'password khong duoc de trong' })
   password: string;
-
-  @IsNotEmpty({ message: 'gender khong duoc de trong' })
-  gender: string;
 
   @IsNotEmpty({ message: 'phone khong duoc de trong' })
   phone: string;

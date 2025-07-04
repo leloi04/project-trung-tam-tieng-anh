@@ -9,7 +9,11 @@ import {
   Query,
 } from '@nestjs/common';
 import { CoursesService } from './courses.service';
-import { CreateCourseDto, RegisterCourseDto } from './dto/create-course.dto';
+import {
+  CreateCourseDto,
+  DistributeClass,
+  RegisterCourseDto,
+} from './dto/create-course.dto';
 import { UpdateCourseDto } from './dto/update-course.dto';
 import { ResponseMessage, User } from 'src/decorator/customize';
 import { IUser } from 'src/types/global.constanst';
@@ -71,9 +75,9 @@ export class CoursesController {
     return this.coursesService.findRegisteredCourses(user);
   }
 
-  @Patch(':id/assign-students')
+  @Post('assign-students')
   @ResponseMessage('Assign a Courses')
-  assign(@Param('id') courseId: string) {
-    return this.coursesService.assignStudentsAndTeacherToClasses(courseId);
+  assign(@Body() distributeClass: DistributeClass) {
+    return this.coursesService.assignStudentsToClass(distributeClass);
   }
 }

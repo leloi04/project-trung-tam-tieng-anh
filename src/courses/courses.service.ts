@@ -3,15 +3,22 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { CreateCourseDto, RegisterCourseDto } from './dto/create-course.dto';
+import {
+  CreateCourseDto,
+  DistributeClass,
+  RegisterCourseDto,
+} from './dto/create-course.dto';
 import { UpdateCourseDto } from './dto/update-course.dto';
 import { Course, CourseDocument } from './schemas/course.schema';
 import { SoftDeleteModel } from 'soft-delete-plugin-mongoose';
 import { InjectModel } from '@nestjs/mongoose';
 import { IUser } from 'src/types/global.constanst';
 import aqp from 'api-query-params';
-import { Types } from 'mongoose';
+import mongoose, { Types } from 'mongoose';
 import { Class, ClassDocument } from 'src/class/schemas/class.schema';
+import { Tuition, TuitionDocument } from 'src/tuition/schemas/tuition.schema';
+import { CreateTuitionDto } from 'src/tuition/dto/create-tuition.dto';
+import { User, UserDocument } from 'src/users/schemas/user.schema';
 
 @Injectable()
 export class CoursesService {
@@ -21,6 +28,12 @@ export class CoursesService {
 
     @InjectModel(Class.name)
     private ClassModel: SoftDeleteModel<ClassDocument>,
+
+    @InjectModel(Tuition.name)
+    private TuitionModel: SoftDeleteModel<TuitionDocument>,
+
+    @InjectModel(User.name)
+    private UserModal: SoftDeleteModel<UserDocument>,
   ) {}
 
   async create(createCourseDto: CreateCourseDto, user: IUser) {
@@ -54,6 +67,20 @@ export class CoursesService {
       .populate(population)
       .exec();
 
+    const now = new Date();
+    let isActive: boolean;
+    result.forEach((item) => {
+      if (item.openMode == 'AUTO') {
+        if (item.startDate <= now && item.endDate >= now) {
+          isActive = true;
+        } else {
+          isActive = false;
+        }
+        item.isOpen = isActive;
+        item.save();
+      }
+    });
+
     return {
       meta: {
         current: currentPage, //trang hiện tại
@@ -66,10 +93,15 @@ export class CoursesService {
   }
 
   async findOne(id: string) {
-    return await this.CourseModel.findById(id).populate({
-      path: 'registeredBy.userId',
-      select: { name: 1 },
-    });
+    return await this.CourseModel.findById(id)
+      .populate({
+        path: 'registeredBy.userId',
+        select: { name: 1 },
+      })
+      .populate({
+        path: 'teacher',
+        select: { name: 1 },
+      });
   }
 
   async update(id: string, updateCourseDto: UpdateCourseDto, user: IUser) {
@@ -100,6 +132,51 @@ export class CoursesService {
 
   async register(registerCourse: RegisterCourseDto, user: IUser) {
     const { status = 'PENDING', courseId, assignedClassId } = registerCourse;
+    const course = await this.CourseModel.findById(courseId);
+    const totalSessions = course?.totalSessions as number;
+    const pricePerSession = course?.pricePerSession as number;
+    let amountPaid = 0;
+    let calculatedTuition = this.calculateTuition(
+      totalSessions,
+      pricePerSession,
+    );
+
+    await this.TuitionModel.create({
+      studentId: new mongoose.Types.ObjectId(user._id),
+      courseId: courseId,
+      amountPaid,
+      calculatedTuition,
+      remaining: calculatedTuition,
+      isFullyPaid: false,
+    });
+
+    await this.CourseModel.updateOne(
+      {
+        _id: courseId,
+      },
+      {
+        $pull: {
+          registeredBy: {
+            userId: user._id,
+            status,
+            createdBy: {
+              _id: user._id,
+              email: user.email,
+            },
+          },
+        },
+      },
+    );
+
+    await this.UserModal.updateOne(
+      {
+        _id: user._id,
+      },
+      {
+        role: new mongoose.Types.ObjectId('68287380954ffe41c849b2b9'),
+      },
+    );
+
     return await this.CourseModel.updateOne(
       {
         _id: courseId,
@@ -127,81 +204,96 @@ export class CoursesService {
     }).select(['name', '_id']);
   }
 
-  async assignStudentsAndTeacherToClasses(courseId: string) {
-    // 1. Lấy Course
-    const course = await this.CourseModel.findById(courseId);
-    if (!course) throw new BadRequestException('Course not found');
+  async assignStudentsToClass(distributeClass: DistributeClass) {
+    const { classId, options } = distributeClass;
+    const cls = await this.ClassModel.findOne({ _id: classId });
+    if (!cls) throw new BadRequestException('Class not found');
 
-    // 2. Lấy danh sách học sinh đăng ký (chưa gán lớp)
-    const unassignedStudents = course.registeredBy
-      .filter((r) => r.status === 'PENDING')
-      .map((r) => ({
-        userId: r.userId, // fallback nếu thiếu userId
-        raw: r, // lưu lại toàn bộ object để cập nhật sau
-      }));
+    let studentIdsToAssign: string[] = [];
 
-    // 3. Lấy danh sách Class có courseId = course._id
-    const classes = await this.ClassModel.find({ courseId });
+    if (options.courseId) {
+      const course = await this.CourseModel.findById(options.courseId);
+      if (!course) throw new BadRequestException('Course not found');
 
-    // 4. Phân chia học sinh vào lớp
-    let startIndex = 0;
-    const assignments: { userId: string; assignedClassId: Types.ObjectId }[] =
-      [];
+      const unassignedStudents = course.registeredBy
+        .filter((r) => r.status === 'PENDING')
+        .map((r) => r.userId?.toString())
+        .filter(Boolean);
 
-    for (const cls of classes) {
-      const availableSlots = cls.totalStudent;
-      const studentsChunk = unassignedStudents.slice(
-        startIndex,
-        startIndex + availableSlots,
-      );
-      const studentIds = studentsChunk.map((s) => s.userId);
+      const availableSlots = cls.totalStudent - (cls.students?.length || 0);
+      studentIdsToAssign = unassignedStudents.slice(0, availableSlots);
 
-      // Cập nhật class.students
       await this.ClassModel.updateOne(
-        { _id: cls._id },
+        { _id: classId },
         {
           $addToSet: {
-            students: { $each: studentIds },
+            students: { $each: studentIdsToAssign },
             teachers: course.teacher,
           },
         },
       );
 
-      // Ghi nhớ để cập nhật lại course.registeredBy
-      for (const stu of studentsChunk) {
-        assignments.push({
-          userId: stu.userId.toString(),
-          assignedClassId: cls._id,
-        });
-      }
+      course.registeredBy = course.registeredBy.map((entry) => {
+        if (
+          entry.userId &&
+          studentIdsToAssign.includes(entry.userId.toString())
+        ) {
+          return {
+            ...entry,
+            status: 'ASSIGNED',
+            assignedClassId: cls._id,
+          };
+        }
+        return entry;
+      });
 
-      startIndex += studentsChunk.length;
+      await course.save();
+
+      return {
+        message: 'Đã gán học sinh từ course vào lớp',
+        assigned: studentIdsToAssign.length,
+      };
     }
 
-    // 5. Cập nhật lại course.registeredBy: status + assignedClassId
-    course.registeredBy = course.registeredBy.map((entry) => {
-      const assigned = assignments.find(
-        (a) =>
-          entry.userId?.toString() === a.userId ||
-          entry.createdBy?._id?.toString() === a.userId,
+    if (options.studentIds?.length) {
+      studentIdsToAssign = options.studentIds;
+
+      await this.ClassModel.updateOne(
+        { _id: classId },
+        {
+          $addToSet: {
+            students: { $each: studentIdsToAssign },
+          },
+        },
       );
 
-      if (assigned) {
-        return {
-          ...entry,
-          status: 'ASSIGNED',
-          assignedClassId: assigned.assignedClassId,
-        };
+      return {
+        message: 'Đã gán từng học sinh vào lớp',
+        assigned: studentIdsToAssign.length,
+      };
+    }
+
+    throw new BadRequestException('Vui lòng truyền courseId hoặc studentIds');
+  }
+
+  calculateTuition(
+    totalSessions: number,
+    pricePerSession: number,
+    amountDiscount: number = 0,
+  ) {
+    const total = totalSessions * pricePerSession;
+    let discounted = 0;
+
+    if (amountDiscount > 0) {
+      if (amountDiscount <= 100) {
+        discounted = total - total * (amountDiscount / 100);
       }
 
-      return entry;
-    });
+      discounted = total - amountDiscount;
+    } else {
+      discounted = total;
+    }
 
-    await course.save();
-
-    return {
-      message: 'Phân lớp và gán giáo viên thành công',
-      totalAssigned: assignments.length,
-    };
+    return discounted;
   }
 }
