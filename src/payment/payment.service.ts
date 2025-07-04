@@ -34,29 +34,35 @@ export class PaymentService {
       throw new NotFoundException('Không tìm thấy học phí');
     }
 
+    let discountAmount = 0;
     if (voucherId) {
       const voucher = await this.voucherModel.findById(voucherId);
       if (!voucher) {
         throw new BadRequestException('Voucher không hợp lệ hoặc đã sử dụng');
       }
 
+      if (voucher.type === 'PERCENT') {
+        discountAmount = (tuition.remaining * voucher.value) / 100;
+      } else {
+        discountAmount = voucher.value;
+      }
+
       if (voucher.usageCount < voucher.maxUsage) {
         voucher.usageCount += 1;
         voucher.save();
-      } else {
-        throw new BadRequestException('Voucher đã được sử dụng hết');
       }
     }
 
-    tuition.amountPaid += amount;
-    tuition.remaining -= amount;
+    const finalPaid = amount;
+    tuition.amountPaid += finalPaid;
+    tuition.remaining = tuition.remaining - finalPaid - discountAmount;
     tuition.isFullyPaid = tuition.remaining <= 0;
     await tuition.save();
 
     const payment = await this.paymentModel.create({
       tuitionId,
-      amount,
       userId: user._id,
+      amount: finalPaid,
       note,
       voucherId: voucherId || undefined,
       createdBy: {
